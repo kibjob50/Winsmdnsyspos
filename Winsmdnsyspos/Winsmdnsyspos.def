@@ -1,0 +1,3 @@
+LIBRARY
+EXPORTS
+	report1=_report1@0
