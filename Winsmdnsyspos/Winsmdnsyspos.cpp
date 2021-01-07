@@ -30,108 +30,177 @@ using Microsoft::WRL::Wrappers::HString;
 using Microsoft::WRL::Wrappers::HStringReference;
 
 #define DllExport __declspec( dllexport )
-extern "C" DllExport   VARIANT_BOOL report0(signed short in_par);
+extern "C" DllExport   signed short report0(signed short in_par);
+
+// Variabili Globali
+TCHAR cartellaInst[MAX_PATH];
+TCHAR fulFnameToChkCopy[MAX_PATH];
+TCHAR fulFnameToCreate[MAX_PATH];
+ofstream fileDllou;
+ifstream fileDllin;
+char* numSeriale;
+
 
 // ______________________________________________
-void spazzola()
+
+int getPgmRif() // compila cartellaInst fulFnameDLL
+// ritorna:     0 OK 1 KO
 {
-    ifstream infile;
-    infile.open("C:\\tmp\\ProveCDLL\\Sandbxsysval.spt", ios::binary | ios::in);
-    ofstream oufile;
-    oufile.open("C:\\tmp\\ProveCDLL\\pisq1.ttt", ios::binary | ios::out);
-    // rest of program
-    char x;
-    while (infile.eof() == false)
-    {
-        infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
-        if (infile.eof() == false) oufile.write(&x, 1);
-    }
-    infile.close(); oufile.close();
+	if (SUCCEEDED(SHGetFolderPath(NULL,
+		CSIDL_PROGRAM_FILESX86,
+		NULL,
+		0,
+		cartellaInst)))
+	{
+		PathAppend(cartellaInst, TEXT("ServicePlanning_BC"));
+		PathAppend(fulFnameToChkCopy, cartellaInst);
+		PathAppend(fulFnameToChkCopy, TEXT("Sandbxsysval.spt"));
+		PathAppend (fulFnameToCreate, cartellaInst);
+		PathAppend(fulFnameToCreate, TEXT("Winsmdnsysrate.dll"));
+
+
+		fileDllin.open(fulFnameToChkCopy);
+		if (fileDllin) {
+			fileDllin.close();
+			return 0;
+		}
+		else   return 1;
+	}
+	return 1;
 }
 // ______________________________________________
- 
-
- 
- 
-
-
-
-   int report1()
+void  getSnumb()
 {
-       TCHAR cartella[MAX_PATH];
-       ofstream fileDllou;
-       ifstream fileDllin;
+	size_t convertedChars = 0;
+	const wchar_t* numser;
 
-       if (SUCCEEDED(SHGetFolderPath(NULL,
-           CSIDL_PROGRAM_FILESX86    ,
-           NULL,
-           0,
-           cartella)))
-       {
-           PathAppend(cartella, TEXT("ServicePlanning_BC"));
-           PathAppend(cartella, TEXT("Winsmdnsysrate.dll"));
+	CoInitialize(NULL);
+	WRL::ComPtr<spsm::ISmbiosInformationStatics> statics;
+	HString serialNumber;
 
-           fileDllin.open(cartella);
-           if (fileDllin) {
-               fileDllin.close();
-               return 0;
-           }
-           else {
-               fileDllou.open(cartella);
-               fileDllou << "eccoci quà" << endl;
-               return 1;
-           }
-       }
-        
-    //int __cdecl wmain(int, wchar_t**);
-    const wchar_t* numser;
-   
-    size_t convertedChars = 0;
-     
-    CoInitialize(NULL);
-    WRL::ComPtr<spsm::ISmbiosInformationStatics> statics;
-    HString serialNumber;
-    RoGetActivationFactory(HStringReference(
-        RuntimeClass_Windows_System_Profile_SystemManufacturers_SmbiosInformation)
-        .Get(), IID_PPV_ARGS(&statics));
-    statics->get_SerialNumber(serialNumber.GetAddressOf());
-    numser = serialNumber.GetRawBuffer(nullptr);
-    size_t numsersize = wcslen(numser) + 1;
-    const size_t newsize = numsersize * 2;
-    char* nstring = new char[newsize];
-    wcstombs_s(&convertedChars, nstring, newsize, numser, _TRUNCATE);
-    //_mbscat_s((unsigned char*)nstring, newsize , (unsigned char*)strConcat);
+	RoGetActivationFactory(HStringReference(
+		RuntimeClass_Windows_System_Profile_SystemManufacturers_SmbiosInformation)
+		.Get(), IID_PPV_ARGS(&statics));
 
-    // BSTR str = SysAllocString(numseria);
-    string firstName = "John ";
-    string lastName = "Doe";
-    string fullName = nstring + lastName;
-
-    fileDllou.open("C:\\tmp\\ciccioexample.txt" );
-    fileDllou << nstring << endl;
-
-    fileDllou.close();
-    return 0;
-    //wstring ws(numseria);
-    //string str(ws.begin(), ws.end());
+	statics->get_SerialNumber(serialNumber.GetAddressOf());
+	numser = serialNumber.GetRawBuffer(nullptr);
+	size_t numsersize = wcslen(numser) + 1;
+	const size_t newsize = numsersize * 2;
+	numSeriale = new char[newsize];
+	wcstombs_s(&convertedChars, numSeriale, newsize, numser , _TRUNCATE);
 
 
-    //SysFreeString(str);
-    // wprintf(L"Serial number = %ls\n", serialNumber.GetRawBuffer(nullptr));
-
+	//_mbscat_s((unsigned char*)nstring, newsize , (unsigned char*)strConcat);
 }
-   extern "C" DllExport   VARIANT_BOOL report0(signed short in_par)
-   {
-       if (in_par == 0X1)
-       {
-           int retco = report1();
-           return false;
-       }
-       if (in_par == 0x2)
-           return true;
-       return false;
-   }
-   // ______________________________________________ TESORIZZA
+// ______________________________________________
+int checkSN()
+{
+	return 0;
+}
+
+
+// ______________________________________________
+
+int creaDLSN() // copia un pezzo di ServicePlan.accd(br) in Winsmdnsysgenerate.dll
+			   // inserendo SN 
+// ritorna:     0 OK 1 KO         
+{
+	TCHAR fileDaCopiare[MAX_PATH];
+	TCHAR fileDaCreare[MAX_PATH];
+	ifstream infile; ofstream oufile;
+	int lenSN;
+	getSnumb();
+	if (getPgmRif() == 0) {
+		lenSN = strlen(numSeriale);
+		PathAppend(fileDaCopiare, fulFnameToChkCopy);
+		 
+		infile.open(fileDaCopiare, ios::binary | ios::in);
+		if (!fileDaCopiare)  
+			return 1;
+		PathAppend(fileDaCreare, fulFnameToCreate );
+		oufile.open(fileDaCreare, ios::binary | ios::out);
+	}
+	char x;
+	char car;
+	int y = 0, z = 0;
+	while (infile.eof() == false  )
+	{
+		infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
+		if (infile.eof() == false) oufile.write(&x, 1);
+		y += 1;
+		if (y == 9300) {
+			char ca1 = lenSN;
+			oufile.write(&ca1, 1);
+			while (z < lenSN) {
+				car = numSeriale[z] +z + 30;
+				oufile.write(&car, 1);
+				z += 1;
+			}
+		}
+	}
+	infile.close(); oufile.close();
+	return 0;
+}
+// ______________________________________________
+
+int checkDLL() // controlla che esista DLL e contentga SN giusto
+// ritorna:     0 se non esiste DLL
+//              1 se esiste ma con SN diverso
+//              2 se esiste e SN uguale
+{
+	if (SUCCEEDED(SHGetFolderPath(NULL,
+		CSIDL_PROGRAM_FILESX86,
+		NULL,
+		0,
+		cartellaInst)))
+	{
+ 
+
+		fileDllin.open(fulFnameToChkCopy);
+		if (fileDllin) {
+			fileDllin.close();
+			return 0;
+		}
+		else   return 0;
+	}
+	return 0;
+}
+//fileDllou.open(fulFnameDLL);
+		//fileDllou << "eccoci quà" << endl;   
+//int __cdecl wmain(int, wchar_t**);
+
+
+
+	// BSTR str = SysAllocString(numseria);
+ ///*   string firstName = "John ";
+ //   string lastName = "Doe";
+ //   string fullName = nstring + lastName;
+
+ //   fileDllou.open("C:\\tmp\\ciccioexample.txt" );
+ //   fileDllou << nstring << endl;
+
+ //   fileDllou.close();*/
+
+	//wstring ws(numseria);
+	//string str(ws.begin(), ws.end());
+
+
+	//SysFreeString(str);
+	// wprintf(L"Serial number = %ls\n", serialNumber.GetRawBuffer(nullptr));
+	//                   VARIANT_BOOL
+
+extern "C" DllExport  signed short report0(signed short in_par)
+{
+	if (in_par == 0X1)
+	{
+		creaDLSN();
+		return 2;
+	}
+	if (in_par == 0x2)
+		return 1;
+	return 0;
+}
+// ______________________________________________ TESORIZZA
 //wstring cercadirCorrente() {
 //    TCHAR buffer[MAX_PATH] = { 0 };
 //    GetModuleFileName(NULL, buffer, MAX_PATH);
