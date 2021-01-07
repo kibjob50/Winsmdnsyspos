@@ -1,3 +1,3 @@
 LIBRARY
 EXPORTS
-	report1=_report1@0
+	report0=_report0@4
