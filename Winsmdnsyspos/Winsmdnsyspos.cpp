@@ -64,9 +64,9 @@ int getPgmRif() // compila cartellaInst fulFnameDLL
 			fileDllin.close();
 			return 0;
 		}
-		else   return 1;
+		else   return 3;
 	}
-	return 1;
+	return 3;
 }
 // ______________________________________________
 void  getSnumb()
@@ -148,7 +148,7 @@ int checkSN()
 		}
 	}
 	else {
-		retcode = 1;
+		retcode = 3;
 	}
 esci:
 	infile.close();
