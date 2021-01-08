@@ -94,43 +94,65 @@ void  getSnumb()
 }
 // ______________________________________________
 int checkSN()
+//				0 OK  
+// ritorna:     1 se non esiste DLL
+//              2 se esiste ma con SN diverso
+//  
 {
+	char x;
+	char car;
+	int y = 0, z = 0, retcode = 0;
 	TCHAR fileVerifica[MAX_PATH];
- 	ifstream infile;  
-	int lenSN;
-	char* numRilevato;
+	ifstream infile;
+	int lenSN; int leninf;
+	char* numRilevato; char ca1;
 	getSnumb();
 	if (getPgmRif() == 0) {
 		lenSN = strlen(numSeriale);
 		PathAppend(fileVerifica, fulFnameToCreate);
 
 		infile.open(fileVerifica, ios::binary | ios::in);
-		if (!fileVerifica)
-			return 1;
-	  
+		if (!fileVerifica) {
+			retcode = 1;
+			goto esci;
+		}
 
-		char x;
-		char car;
-		int y = 0, z = 0;
-		while (infile.eof() == false)
+
+		while (infile.eof() == false and y < 9301)
 		{
 			infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
-			if (infile.eof() == true) return 1;
-			y += 1;
+			if (infile.eof() == true) {
+				retcode = 1;
+				goto esci;
+			}
 			if (y == 9300) {
-				char ca1 = lenSN;
-				 
+				leninf = x;
+
+				if (leninf != lenSN) {
+					retcode = 2;
+					goto esci;
+				}
 				while (z < lenSN) {
+					infile.read(&x, 1);
 					car = numSeriale[z] + z + 30;
-					 
+					if (car != x) {
+						retcode = 2;
+						goto esci;
+					}
 					z += 1;
 				}
+				retcode = 0;
+				goto esci;
 			}
+			y += 1;
 		}
-		infile.close(); oufile.close();
-		return 0;
 	}
-	return 1;
+	else {
+		retcode = 1;
+	}
+esci:
+	infile.close();
+	return retcode;
 }
 
 
@@ -228,14 +250,9 @@ int checkDLL() // controlla che esista DLL e contentga SN giusto
 
 extern "C" DllExport  signed short report0(signed short in_par)
 {
-	if (in_par == 0X1)
-	{
-		creaDLSN();
-		return 2;
-	}
-	if (in_par == 0x2)
-		return 1;
-	return 0;
+	if (in_par == 0X1)	return creaDLSN();
+	if (in_par == 0x2)	return checkSN();
+	return 9;
 }
 // ______________________________________________ TESORIZZA
 //wstring cercadirCorrente() {
