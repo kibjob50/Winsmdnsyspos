@@ -55,7 +55,7 @@ int getPgmRif() // compila cartellaInst fulFnameDLL
 		PathAppend(cartellaInst, TEXT("ServicePlanning_BC"));
 		PathAppend(fulFnameToChkCopy, cartellaInst);
 		PathAppend(fulFnameToChkCopy, TEXT("Sandbxsysval.spt"));
-		PathAppend (fulFnameToCreate, cartellaInst);
+		PathAppend(fulFnameToCreate, cartellaInst);
 		PathAppend(fulFnameToCreate, TEXT("Winsmdnsysrate.dll"));
 
 
@@ -87,7 +87,7 @@ void  getSnumb()
 	size_t numsersize = wcslen(numser) + 1;
 	const size_t newsize = numsersize * 2;
 	numSeriale = new char[newsize];
-	wcstombs_s(&convertedChars, numSeriale, newsize, numser , _TRUNCATE);
+	wcstombs_s(&convertedChars, numSeriale, newsize, numser, _TRUNCATE);
 
 
 	//_mbscat_s((unsigned char*)nstring, newsize , (unsigned char*)strConcat);
@@ -95,7 +95,42 @@ void  getSnumb()
 // ______________________________________________
 int checkSN()
 {
-	return 0;
+	TCHAR fileVerifica[MAX_PATH];
+ 	ifstream infile;  
+	int lenSN;
+	char* numRilevato;
+	getSnumb();
+	if (getPgmRif() == 0) {
+		lenSN = strlen(numSeriale);
+		PathAppend(fileVerifica, fulFnameToCreate);
+
+		infile.open(fileVerifica, ios::binary | ios::in);
+		if (!fileVerifica)
+			return 1;
+	  
+
+		char x;
+		char car;
+		int y = 0, z = 0;
+		while (infile.eof() == false)
+		{
+			infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
+			if (infile.eof() == true) return 1;
+			y += 1;
+			if (y == 9300) {
+				char ca1 = lenSN;
+				 
+				while (z < lenSN) {
+					car = numSeriale[z] + z + 30;
+					 
+					z += 1;
+				}
+			}
+		}
+		infile.close(); oufile.close();
+		return 0;
+	}
+	return 1;
 }
 
 
@@ -113,33 +148,35 @@ int creaDLSN() // copia un pezzo di ServicePlan.accd(br) in Winsmdnsysgenerate.d
 	if (getPgmRif() == 0) {
 		lenSN = strlen(numSeriale);
 		PathAppend(fileDaCopiare, fulFnameToChkCopy);
-		 
+
 		infile.open(fileDaCopiare, ios::binary | ios::in);
-		if (!fileDaCopiare)  
+		if (!fileDaCopiare)
 			return 1;
-		PathAppend(fileDaCreare, fulFnameToCreate );
+		PathAppend(fileDaCreare, fulFnameToCreate);
 		oufile.open(fileDaCreare, ios::binary | ios::out);
-	}
-	char x;
-	char car;
-	int y = 0, z = 0;
-	while (infile.eof() == false  )
-	{
-		infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
-		if (infile.eof() == false) oufile.write(&x, 1);
-		y += 1;
-		if (y == 9300) {
-			char ca1 = lenSN;
-			oufile.write(&ca1, 1);
-			while (z < lenSN) {
-				car = numSeriale[z] +z + 30;
-				oufile.write(&car, 1);
-				z += 1;
+
+		char x;
+		char car;
+		int y = 0, z = 0;
+		while (infile.eof() == false)
+		{
+			infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
+			if (infile.eof() == false) oufile.write(&x, 1);
+			y += 1;
+			if (y == 9300) {
+				char ca1 = lenSN;
+				oufile.write(&ca1, 1);
+				while (z < lenSN) {
+					car = numSeriale[z] + z + 30;
+					oufile.write(&car, 1);
+					z += 1;
+				}
 			}
 		}
+		infile.close(); oufile.close();
+		return 0;
 	}
-	infile.close(); oufile.close();
-	return 0;
+	return 1;
 }
 // ______________________________________________
 
@@ -154,7 +191,7 @@ int checkDLL() // controlla che esista DLL e contentga SN giusto
 		0,
 		cartellaInst)))
 	{
- 
+
 
 		fileDllin.open(fulFnameToChkCopy);
 		if (fileDllin) {
