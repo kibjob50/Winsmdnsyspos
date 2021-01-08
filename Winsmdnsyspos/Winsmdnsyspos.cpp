@@ -202,52 +202,6 @@ int creaDLSN() // copia un pezzo di ServicePlan.accd(br) in Winsmdnsysgenerate.d
 }
 // ______________________________________________
 
-int checkDLL() // controlla che esista DLL e contentga SN giusto
-// ritorna:     0 se non esiste DLL
-//              1 se esiste ma con SN diverso
-//              2 se esiste e SN uguale
-{
-	if (SUCCEEDED(SHGetFolderPath(NULL,
-		CSIDL_PROGRAM_FILESX86,
-		NULL,
-		0,
-		cartellaInst)))
-	{
-
-
-		fileDllin.open(fulFnameToChkCopy);
-		if (fileDllin) {
-			fileDllin.close();
-			return 0;
-		}
-		else   return 0;
-	}
-	return 0;
-}
-//fileDllou.open(fulFnameDLL);
-		//fileDllou << "eccoci quà" << endl;   
-//int __cdecl wmain(int, wchar_t**);
-
-
-
-	// BSTR str = SysAllocString(numseria);
- ///*   string firstName = "John ";
- //   string lastName = "Doe";
- //   string fullName = nstring + lastName;
-
- //   fileDllou.open("C:\\tmp\\ciccioexample.txt" );
- //   fileDllou << nstring << endl;
-
- //   fileDllou.close();*/
-
-	//wstring ws(numseria);
-	//string str(ws.begin(), ws.end());
-
-
-	//SysFreeString(str);
-	// wprintf(L"Serial number = %ls\n", serialNumber.GetRawBuffer(nullptr));
-	//                   VARIANT_BOOL
-
 extern "C" DllExport  signed short report0(signed short in_par)
 {
 	if (in_par == 0X1)	return creaDLSN();
