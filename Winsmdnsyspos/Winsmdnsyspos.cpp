@@ -41,8 +41,11 @@ TCHAR pgdataPath[MAX_PATH];
 TCHAR fulFnameWorka[MAX_PATH];
 wchar_t* ProgramFilesX86 = new wchar_t[MAX_PATH];
 wchar_t* ProgramData = new wchar_t[MAX_PATH];
-ofstream fileDllou;
-ifstream fileDllin;
+ 
+TCHAR fileDaCopiare[MAX_PATH];
+TCHAR fileDaCreare[MAX_PATH];
+ifstream infile; ofstream oufile;
+int lenSN;
 char* numSeriale;
 typedef wchar_t* LPWSTR, * PWSTR;
 
@@ -99,45 +102,11 @@ int  getSnumb()
 
 	//_mbscat_s((unsigned char*)nstring, newsize , (unsigned char*)strConcat);
 }
-
 // ______________________________________________
-int primaInst()	// ritorna:     0 OK 1 KO         
-{
-	TCHAR fileDaCopiare[MAX_PATH];
-	TCHAR fileDaCreare[MAX_PATH];
-	ifstream infile; ofstream oufile;
-	int lenSN;
-
-	if (!getSnumb() == 0 || !getPgmRif() == 0)  return 1;
 
 
-	//PathAppend(fulFnameToChkCopy, ProgramFilesX86);
-	//PathAppend(fulFnameToChkCopy, TEXT("Sandbxsysval.spt"));
-	//PathAppend(fulFnameToCreate, ProgramData);
-	//PathAppend(fulFnameToCreate, TEXT("\\WinSysDbs\\Winsmdnsysrate.dll"));
-
-	// copio as is Sandbxsysval.spt come wyntol4ssvv.dll 
-	PathAppend(fileDaCopiare, installPath);
-	PathAppend(fileDaCopiare, TEXT("Sandbxsysval.spt"));
-	PathAppend(fileDaCreare, pgdataPath);
-	PathAppend(fileDaCreare, TEXT("wyntol4ssvv.dll"));
-
-	ifstream source(fileDaCopiare, ios::binary);
-	ofstream dest(fileDaCreare, ios::binary);
-	dest << source.rdbuf();
-	source.close();
-	dest.close();
-
-	// -------------------------------------------------------------------
-	// creo / ricreo Winsmdnsysrate  con inserto SN
-	lenSN = strlen(numSeriale);
-	ZeroMemory(fileDaCopiare, sizeof(fileDaCopiare));
-	PathAppend(fileDaCopiare, pgdataPath);
-	PathAppend(fileDaCopiare, TEXT("wyntol4ssvv.dll"));
-	ZeroMemory(fileDaCreare, sizeof(fileDaCreare));
-	PathAppend(fileDaCreare, pgdataPath);
-	PathAppend(fileDaCreare, TEXT("Winsmdnsysrate.dll"));
-
+	int lavora()	// ritorna:     0 OK 1 KO         
+	{
 	infile.open(fileDaCopiare, ios::binary | ios::in);
 	if (!fileDaCopiare)
 		return 1;
@@ -201,6 +170,48 @@ int primaInst()	// ritorna:     0 OK 1 KO
 	infile.close(); oufile.close();
 	return 0;
 }
+
+	// -------------------------------------------------------------------
+int primaInst()	// ritorna:     0 OK 1 KO         
+	{
+		if (!getSnumb() == 0 || !getPgmRif() == 0)  return 1;
+
+		// copio as is Sandbxsysval.spt come wyntol4ssvv.dll 
+		PathAppend(fileDaCopiare, installPath);
+		PathAppend(fileDaCopiare, TEXT("Sandbxsysval.spt"));
+		PathAppend(fileDaCreare, pgdataPath);
+		PathAppend(fileDaCreare, TEXT("wyntol4ssvv.dll"));
+
+		ifstream source(fileDaCopiare, ios::binary);
+		ofstream dest(fileDaCreare, ios::binary);
+		dest << source.rdbuf();
+		source.close();
+		dest.close();
+
+ 		lenSN = strlen(numSeriale);
+		ZeroMemory(fileDaCopiare, sizeof(fileDaCopiare));
+		PathAppend(fileDaCopiare, pgdataPath);
+		PathAppend(fileDaCopiare, TEXT("wyntol4ssvv.dll"));
+		ZeroMemory(fileDaCreare, sizeof(fileDaCreare));
+		PathAppend(fileDaCreare, pgdataPath);
+		PathAppend(fileDaCreare, TEXT("Winsmdnsysrate.dll"));
+		return lavora();
+	}
+// ______________________________________________
+int rinnovo()	// ritorna:     0 OK 1 KO         
+{
+	if (!getSnumb() == 0 || !getPgmRif() == 0)  return 1;
+
+ // ricreo Winsmdnsysrate  con inserto SN
+	lenSN = strlen(numSeriale);
+	ZeroMemory(fileDaCopiare, sizeof(fileDaCopiare));
+	PathAppend(fileDaCopiare, pgdataPath);
+	PathAppend(fileDaCopiare, TEXT("wyntol4ssvv.dll"));
+	ZeroMemory(fileDaCreare, sizeof(fileDaCreare));
+	PathAppend(fileDaCreare, pgdataPath);
+	PathAppend(fileDaCreare, TEXT("Winsmdnsysrate.dll"));
+	return lavora();
+	}
 // ______________________________________________
 int controllo()
 //				0 OK  
@@ -251,19 +262,17 @@ int controllo()
 	retcode = 0;
 	goto esci;
 
-
-
 esci:
 	infile.close();
 	return retcode;
-}
+} // controllo() fine
 // ______________________________________________
 
 extern "C" DllExport  signed short report0(signed short in_par)
 {
 	if (in_par == 0X0)	return primaInst();
 	if (in_par == 0x1)	return controllo();
-	//if (in_par == 0X2)	return rinnovo();
+	if (in_par == 0X2)	return rinnovo();
 	return 9;
 }
 // ______________________________________________ TESORIZZA
