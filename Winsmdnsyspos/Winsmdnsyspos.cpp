@@ -33,14 +33,14 @@ using Microsoft::WRL::Wrappers::HStringReference;
 extern "C" DllExport   signed short report0(signed short in_par);
 
 // Variabili Globali
- 
+
 TCHAR fulFnameToChkCopy[MAX_PATH];
 TCHAR fulFnameToCreate[MAX_PATH];
 TCHAR installPath[MAX_PATH];
 TCHAR pgdataPath[MAX_PATH];
 TCHAR fulFnameWorka[MAX_PATH];
-wchar_t* ProgramFilesX86 = new wchar_t[128];
-wchar_t* ProgramData = new wchar_t[128];
+wchar_t* ProgramFilesX86 = new wchar_t[MAX_PATH];
+wchar_t* ProgramData = new wchar_t[MAX_PATH];
 ofstream fileDllou;
 ifstream fileDllin;
 char* numSeriale;
@@ -61,7 +61,7 @@ int getPgmRif() // compila cartellaInst fulFnameDLL
 		PathAppend(installPath, TEXT("ServicePlanning_BC"));
 		PathAppend(pgdataPath, ProgramData);
 		PathAppend(pgdataPath, TEXT("WinSysDbs"));
- 
+
 		if (CreateDirectory(pgdataPath, NULL) ||
 			ERROR_ALREADY_EXISTS == GetLastError())
 		{
@@ -110,21 +110,18 @@ int primaInst()	// ritorna:     0 OK 1 KO
 
 	if (!getSnumb() == 0 || !getPgmRif() == 0)  return 1;
 
-	
+
 	//PathAppend(fulFnameToChkCopy, ProgramFilesX86);
 	//PathAppend(fulFnameToChkCopy, TEXT("Sandbxsysval.spt"));
 	//PathAppend(fulFnameToCreate, ProgramData);
 	//PathAppend(fulFnameToCreate, TEXT("\\WinSysDbs\\Winsmdnsysrate.dll"));
 
 	// copio as is Sandbxsysval.spt come wyntol4ssvv.dll 
-	PathAppend(fileDaCopiare,  installPath);
+	PathAppend(fileDaCopiare, installPath);
 	PathAppend(fileDaCopiare, TEXT("Sandbxsysval.spt"));
 	PathAppend(fileDaCreare, pgdataPath);
 	PathAppend(fileDaCreare, TEXT("wyntol4ssvv.dll"));
-	//infile.open(fileDaCopiare, ios::binary | ios::in);
-	//oufile.open(fileDaCreare, ios::binary | ios::out);
-	//if (!fileDaCopiare || !fileDaCreare)
-	//	return 1;
+
 	ifstream source(fileDaCopiare, ios::binary);
 	ofstream dest(fileDaCreare, ios::binary);
 	dest << source.rdbuf();
@@ -132,33 +129,75 @@ int primaInst()	// ritorna:     0 OK 1 KO
 	dest.close();
 
 	// -------------------------------------------------------------------
+	// creo / ricreo Winsmdnsysrate  con inserto SN
 	lenSN = strlen(numSeriale);
-	PathAppend(fileDaCopiare, fulFnameToChkCopy);
+	ZeroMemory(fileDaCopiare, sizeof(fileDaCopiare));
+	PathAppend(fileDaCopiare, pgdataPath);
+	PathAppend(fileDaCopiare, TEXT("wyntol4ssvv.dll"));
+	ZeroMemory(fileDaCreare, sizeof(fileDaCreare));
+	PathAppend(fileDaCreare, pgdataPath);
+	PathAppend(fileDaCreare, TEXT("Winsmdnsysrate.dll"));
 
 	infile.open(fileDaCopiare, ios::binary | ios::in);
 	if (!fileDaCopiare)
 		return 1;
-	PathAppend(fileDaCreare, fulFnameToCreate);
-	oufile.open(fileDaCreare, ios::binary | ios::out);
 
+	oufile.open(fileDaCreare, ios::binary | ios::out);
 	char x;
 	char car;
-	int y = 0, z = 0;
-	while (infile.eof() == false)
-	{
-		infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
-		if (infile.eof() == false) oufile.write(&x, 1);
-		y += 1;
-		if (y == 9300) {
-			char ca1 = lenSN;
-			oufile.write(&ca1, 1);
-			while (z < lenSN) {
-				car = numSeriale[z] + z + 30;
-				oufile.write(&car, 1);
-				z += 1;
-			}
-		}
+	//copio i primi 128 bytes
+
+	for (int a = 1; a <= 128; a = a + 1) {
+		infile.read(&x, 1);
+		if (infile.eof() == true) return 1;
+		oufile.write(&x, 1);
 	}
+
+	//skip 20000   bytes
+	for (int a = 1; a <= 20000; a = a + 1) {
+		if (infile.eof() == true) return 1;
+		infile.read(&x, 1);
+	}
+	//copio altri 40000 bytes
+
+	for (int a = 1; a <= 40000; a = a + 1) {
+		infile.read(&x, 1);
+		if (infile.eof() == true) return 1;
+		oufile.write(&x, 1);
+	}
+	//  inserto SN
+
+	int z = 0;
+	char ca1 = lenSN;
+	oufile.write(&ca1, 1);
+	while (z < lenSN) {
+		car = numSeriale[z] + z + 30;
+		oufile.write(&car, 1);
+		z += 1;
+	}
+
+	//copio altri xxxxxx bytes
+
+	for (int a = 1; a <= 480000; a = a + 1) {
+		infile.read(&x, 1);
+		if (infile.eof() == true) return 0; // stavolta mi va bene
+		oufile.write(&x, 1);
+	}
+	//skip 40000   bytes
+	for (int a = 1; a <= 20000; a = a + 1) {
+		if (infile.eof() == true) return 1;
+		infile.read(&x, 1);
+	}
+	//copio altri xxxxxx bytes
+
+	for (int a = 1; a <= 380000; a = a + 1) {
+		infile.read(&x, 1);
+		if (infile.eof() == true) return 0; // stavolta mi va bene
+		oufile.write(&x, 1);
+	}
+	return 0;
+
+
 	infile.close(); oufile.close();
 	return 0;
 }
@@ -175,66 +214,56 @@ int controllo()
 	TCHAR fileVerifica[MAX_PATH];
 	ifstream infile;
 	int lenSN; int leninf;
- 
-	getSnumb();
-	if (getPgmRif() == 0) {
-		lenSN = strlen(numSeriale);
-		PathAppend(fileVerifica, fulFnameToCreate);
 
-		infile.open(fileVerifica, ios::binary | ios::in);
-		if (!fileVerifica) {
-			retcode = 1;
+	getSnumb();
+
+	if (!getPgmRif() == 0)  return 1;
+
+	lenSN = strlen(numSeriale);
+	PathAppend(fileVerifica, pgdataPath);
+	PathAppend(fileVerifica, TEXT("Winsmdnsysrate.dll"));
+
+	infile.open(fileVerifica, ios::binary | ios::in);
+	if (!fileVerifica) {
+		retcode = 1;
+		goto esci;
+	}
+
+	//skip 40128   bytes
+	for (int a = 1; a <= 40129; a = a + 1) {
+		if (infile.eof() == true) return 1;
+		infile.read(&x, 1);
+	}
+	leninf = x;
+	if (leninf != lenSN) {
+		retcode = 2;
+		goto esci;
+	}
+	while (z < lenSN) {
+		infile.read(&x, 1);
+		car = numSeriale[z] + z + 30;
+		if (car != x) {
+			retcode = 2;
 			goto esci;
 		}
-
-
-		while (infile.eof() == false and y < 9301)
-		{
-			infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
-			if (infile.eof() == true) {
-				retcode = 1;
-				goto esci;
-			}
-			if (y == 9300) {
-				leninf = x;
-
-				if (leninf != lenSN) {
-					retcode = 2;
-					goto esci;
-				}
-				while (z < lenSN) {
-					infile.read(&x, 1);
-					car = numSeriale[z] + z + 30;
-					if (car != x) {
-						retcode = 2;
-						goto esci;
-					}
-					z += 1;
-				}
-				retcode = 0;
-				goto esci;
-			}
-			y += 1;
-		}
+		z += 1;
 	}
-	else {
-		retcode = 3;
-	}
+	retcode = 0;
+	goto esci;
+
+
+
 esci:
 	infile.close();
 	return retcode;
 }
-
-
-
 // ______________________________________________
-
 
 extern "C" DllExport  signed short report0(signed short in_par)
 {
 	if (in_par == 0X0)	return primaInst();
-	//if (in_par == 0X1)	return rinnovo();
-	if (in_par == 0x2)	return controllo();
+	if (in_par == 0x1)	return controllo();
+	//if (in_par == 0X2)	return rinnovo();
 	return 9;
 }
 // ______________________________________________ TESORIZZA
