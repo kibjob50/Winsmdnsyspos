@@ -33,43 +33,49 @@ using Microsoft::WRL::Wrappers::HStringReference;
 extern "C" DllExport   signed short report0(signed short in_par);
 
 // Variabili Globali
-TCHAR cartellaInst[MAX_PATH];
+ 
 TCHAR fulFnameToChkCopy[MAX_PATH];
 TCHAR fulFnameToCreate[MAX_PATH];
+TCHAR installPath[MAX_PATH];
+TCHAR pgdataPath[MAX_PATH];
+TCHAR fulFnameWorka[MAX_PATH];
+wchar_t* ProgramFilesX86 = new wchar_t[128];
+wchar_t* ProgramData = new wchar_t[128];
 ofstream fileDllou;
 ifstream fileDllin;
 char* numSeriale;
-
+typedef wchar_t* LPWSTR, * PWSTR;
 
 // ______________________________________________
 
 int getPgmRif() // compila cartellaInst fulFnameDLL
 // ritorna:     0 OK 1 KO
 {
-	if (SUCCEEDED(SHGetFolderPath(NULL,
-		CSIDL_PROGRAM_FILESX86,
-		NULL,
-		0,
-		cartellaInst)))
+
+	HRESULT hrpg = SHGetKnownFolderPath(FOLDERID_ProgramFilesX86, 0, NULL, &ProgramFilesX86);
+	HRESULT hrdd = SHGetKnownFolderPath(FOLDERID_ProgramData, 0, NULL, &ProgramData);
+
+	if (SUCCEEDED(hrpg) && SUCCEEDED(hrdd))
 	{
-		PathAppend(cartellaInst, TEXT("ServicePlanning_BC"));
-		PathAppend(fulFnameToChkCopy, cartellaInst);
-		PathAppend(fulFnameToChkCopy, TEXT("Sandbxsysval.spt"));
-		PathAppend(fulFnameToCreate, cartellaInst);
-		PathAppend(fulFnameToCreate, TEXT("Winsmdnsysrate.dll"));
-
-
-		fileDllin.open(fulFnameToChkCopy);
-		if (fileDllin) {
-			fileDllin.close();
+		PathAppend(installPath, ProgramFilesX86);
+		PathAppend(installPath, TEXT("ServicePlanning_BC"));
+		PathAppend(pgdataPath, ProgramData);
+		PathAppend(pgdataPath, TEXT("WinSysDbs"));
+ 
+		if (CreateDirectory(pgdataPath, NULL) ||
+			ERROR_ALREADY_EXISTS == GetLastError())
+		{
 			return 0;
 		}
-		else   return 3;
+		else
+		{
+			return 3;
+		}
 	}
 	return 3;
 }
 // ______________________________________________
-void  getSnumb()
+int  getSnumb()
 {
 	size_t convertedChars = 0;
 	const wchar_t* numser;
@@ -88,12 +94,76 @@ void  getSnumb()
 	const size_t newsize = numsersize * 2;
 	numSeriale = new char[newsize];
 	wcstombs_s(&convertedChars, numSeriale, newsize, numser, _TRUNCATE);
-
+	if (numsersize < 5) return 1;
+	else return 0;
 
 	//_mbscat_s((unsigned char*)nstring, newsize , (unsigned char*)strConcat);
 }
+
 // ______________________________________________
-int checkSN()
+int primaInst()	// ritorna:     0 OK 1 KO         
+{
+	TCHAR fileDaCopiare[MAX_PATH];
+	TCHAR fileDaCreare[MAX_PATH];
+	ifstream infile; ofstream oufile;
+	int lenSN;
+
+	if (!getSnumb() == 0 || !getPgmRif() == 0)  return 1;
+
+	
+	//PathAppend(fulFnameToChkCopy, ProgramFilesX86);
+	//PathAppend(fulFnameToChkCopy, TEXT("Sandbxsysval.spt"));
+	//PathAppend(fulFnameToCreate, ProgramData);
+	//PathAppend(fulFnameToCreate, TEXT("\\WinSysDbs\\Winsmdnsysrate.dll"));
+
+	// copio as is Sandbxsysval.spt come wyntol4ssvv.dll 
+	PathAppend(fileDaCopiare,  installPath);
+	PathAppend(fileDaCopiare, TEXT("Sandbxsysval.spt"));
+	PathAppend(fileDaCreare, pgdataPath);
+	PathAppend(fileDaCreare, TEXT("wyntol4ssvv.dll"));
+	//infile.open(fileDaCopiare, ios::binary | ios::in);
+	//oufile.open(fileDaCreare, ios::binary | ios::out);
+	//if (!fileDaCopiare || !fileDaCreare)
+	//	return 1;
+	ifstream source(fileDaCopiare, ios::binary);
+	ofstream dest(fileDaCreare, ios::binary);
+	dest << source.rdbuf();
+	source.close();
+	dest.close();
+
+	// -------------------------------------------------------------------
+	lenSN = strlen(numSeriale);
+	PathAppend(fileDaCopiare, fulFnameToChkCopy);
+
+	infile.open(fileDaCopiare, ios::binary | ios::in);
+	if (!fileDaCopiare)
+		return 1;
+	PathAppend(fileDaCreare, fulFnameToCreate);
+	oufile.open(fileDaCreare, ios::binary | ios::out);
+
+	char x;
+	char car;
+	int y = 0, z = 0;
+	while (infile.eof() == false)
+	{
+		infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
+		if (infile.eof() == false) oufile.write(&x, 1);
+		y += 1;
+		if (y == 9300) {
+			char ca1 = lenSN;
+			oufile.write(&ca1, 1);
+			while (z < lenSN) {
+				car = numSeriale[z] + z + 30;
+				oufile.write(&car, 1);
+				z += 1;
+			}
+		}
+	}
+	infile.close(); oufile.close();
+	return 0;
+}
+// ______________________________________________
+int controllo()
 //				0 OK  
 // ritorna:     1 se non esiste DLL
 //              2 se esiste ma con SN diverso
@@ -105,7 +175,7 @@ int checkSN()
 	TCHAR fileVerifica[MAX_PATH];
 	ifstream infile;
 	int lenSN; int leninf;
-	char* numRilevato; char ca1;
+ 
 	getSnumb();
 	if (getPgmRif() == 0) {
 		lenSN = strlen(numSeriale);
@@ -156,56 +226,15 @@ esci:
 }
 
 
+
 // ______________________________________________
 
-int creaDLSN() // copia un pezzo di ServicePlan.accd(br) in Winsmdnsysgenerate.dll
-			   // inserendo SN 
-// ritorna:     0 OK 1 KO         
-{
-	TCHAR fileDaCopiare[MAX_PATH];
-	TCHAR fileDaCreare[MAX_PATH];
-	ifstream infile; ofstream oufile;
-	int lenSN;
-	getSnumb();
-	if (getPgmRif() == 0) {
-		lenSN = strlen(numSeriale);
-		PathAppend(fileDaCopiare, fulFnameToChkCopy);
-
-		infile.open(fileDaCopiare, ios::binary | ios::in);
-		if (!fileDaCopiare)
-			return 1;
-		PathAppend(fileDaCreare, fulFnameToCreate);
-		oufile.open(fileDaCreare, ios::binary | ios::out);
-
-		char x;
-		char car;
-		int y = 0, z = 0;
-		while (infile.eof() == false)
-		{
-			infile.read(&x, 1); // reads 1 bytes into a cell that is either 2 or 4
-			if (infile.eof() == false) oufile.write(&x, 1);
-			y += 1;
-			if (y == 9300) {
-				char ca1 = lenSN;
-				oufile.write(&ca1, 1);
-				while (z < lenSN) {
-					car = numSeriale[z] + z + 30;
-					oufile.write(&car, 1);
-					z += 1;
-				}
-			}
-		}
-		infile.close(); oufile.close();
-		return 0;
-	}
-	return 1;
-}
-// ______________________________________________
 
 extern "C" DllExport  signed short report0(signed short in_par)
 {
-	if (in_par == 0X1)	return creaDLSN();
-	if (in_par == 0x2)	return checkSN();
+	if (in_par == 0X0)	return primaInst();
+	//if (in_par == 0X1)	return rinnovo();
+	if (in_par == 0x2)	return controllo();
 	return 9;
 }
 // ______________________________________________ TESORIZZA
